@@ -1,6 +1,9 @@
+# EfficientViT: Multi-Scale Linear Attention for High-Resolution Dense Prediction
+# Han Cai, Junyan Li, Muyan Hu, Chuang Gan, Song Han
+# International Conference on Computer Vision (ICCV), 2023
+
 import io
 import os
-from typing import Any
 
 import onnx
 import torch
@@ -10,7 +13,7 @@ from onnxsim import simplify as simplify_func
 __all__ = ["export_onnx"]
 
 
-def export_onnx(model: nn.Module, export_path: str, sample_inputs: Any, simplify=True, opset=11) -> None:
+def export_onnx(model: nn.Module, export_path: str, sample_inputs: any, simplify=True, opset=11) -> None:
     """Export a model to a platform-specific onnx format.
 
     Args:

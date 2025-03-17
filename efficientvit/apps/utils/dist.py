@@ -1,3 +1,7 @@
+# EfficientViT: Multi-Scale Linear Attention for High-Resolution Dense Prediction
+# Han Cai, Junyan Li, Muyan Hu, Chuang Gan, Song Han
+# International Conference on Computer Vision (ICCV), 2023
+
 import os
 
 import torch
@@ -7,7 +11,6 @@ from efficientvit.models.utils.list import list_mean, list_sum
 
 __all__ = [
     "dist_init",
-    "is_dist_initialized",
     "get_dist_rank",
     "get_dist_size",
     "is_master",
@@ -18,20 +21,17 @@ __all__ = [
 
 
 def dist_init() -> None:
-    if is_dist_initialized():
-        return
     try:
         torch.distributed.init_process_group(backend="nccl")
         assert torch.distributed.is_initialized()
     except Exception:
-        os.environ["RANK"] = "0"
-        os.environ["WORLD_SIZE"] = "1"
-        os.environ["LOCAL_RANK"] = "0"
-        print("warning: dist not init")
+        # use torchpack
+        from torchpack import distributed as dist
 
-
-def is_dist_initialized() -> bool:
-    return torch.distributed.is_initialized()
+        dist.init()
+        os.environ["RANK"] = f"{dist.rank()}"
+        os.environ["WORLD_SIZE"] = f"{dist.size()}"
+        os.environ["LOCAL_RANK"] = f"{dist.local_rank()}"
 
 
 def get_dist_rank() -> int:
@@ -47,17 +47,14 @@ def is_master() -> bool:
 
 
 def dist_barrier() -> None:
-    if is_dist_initialized():
-        torch.distributed.barrier()
+    torch.distributed.barrier()
 
 
 def get_dist_local_rank() -> int:
     return int(os.environ["LOCAL_RANK"])
 
 
-def sync_tensor(tensor: torch.Tensor | float, reduce="mean") -> torch.Tensor | list[torch.Tensor]:
-    if not is_dist_initialized():
-        return tensor
+def sync_tensor(tensor: torch.Tensor or float, reduce="mean") -> torch.Tensor or list[torch.Tensor]:
     if not isinstance(tensor, torch.Tensor):
         tensor = torch.Tensor(1).fill_(tensor).cuda()
     tensor_list = [torch.empty_like(tensor) for _ in range(get_dist_size())]

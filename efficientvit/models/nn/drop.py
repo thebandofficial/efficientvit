@@ -1,9 +1,13 @@
-from typing import Any, Optional
+# EfficientViT: Multi-Scale Linear Attention for High-Resolution Dense Prediction
+# Han Cai, Junyan Li, Muyan Hu, Chuang Gan, Song Han
+# International Conference on Computer Vision (ICCV), 2023
 
 import numpy as np
 import torch
 import torch.nn as nn
-
+from typing import Dict as dict
+from typing import Tuple as tuple
+from typing import List as list
 from efficientvit.apps.trainer.run_config import Scheduler
 from efficientvit.models.nn.ops import IdentityLayer, ResidualBlock
 from efficientvit.models.utils import build_kwargs_from_config
@@ -11,7 +15,7 @@ from efficientvit.models.utils import build_kwargs_from_config
 __all__ = ["apply_drop_func"]
 
 
-def apply_drop_func(network: nn.Module, drop_config: Optional[dict[str, Any]]) -> None:
+def apply_drop_func(network: nn.Module, drop_config: dict[str, any] or None) -> None:
     if drop_config is None:
         return
 
@@ -55,9 +59,9 @@ class DropPathResidualBlock(ResidualBlock):
     def __init__(
         self,
         main: nn.Module,
-        shortcut: Optional[nn.Module],
+        shortcut: nn.Module or None,
         post_act=None,
-        pre_norm: Optional[nn.Module] = None,
+        pre_norm: nn.Module or None = None,
         ######################################
         drop_prob: float = 0,
         scheduled=True,

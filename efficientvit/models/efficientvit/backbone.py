@@ -1,5 +1,9 @@
-from typing import Optional
-
+# EfficientViT: Multi-Scale Linear Attention for High-Resolution Dense Prediction
+# Han Cai, Junyan Li, Muyan Hu, Chuang Gan, Song Han
+# International Conference on Computer Vision (ICCV), 2023
+from typing import Dict as dict
+from typing import Tuple as tuple
+from typing import List as list
 import torch
 import torch.nn as nn
 
@@ -201,25 +205,25 @@ class EfficientViTLargeBackbone(nn.Module):
         self,
         width_list: list[int],
         depth_list: list[int],
-        block_list: Optional[list[str]] = None,
-        expand_list: Optional[list[float]] = None,
-        fewer_norm_list: Optional[list[bool]] = None,
+        block_list: list[str] or None = None,
+        expand_list: list[float] or None = None,
+        fewer_norm_list: list[bool] or None = None,
         in_channels=3,
         qkv_dim=32,
         norm="bn2d",
         act_func="gelu",
     ) -> None:
         super().__init__()
-        block_list = ["res", "fmb", "fmb", "mb", "att"] if block_list is None else block_list
-        expand_list = [1, 4, 4, 4, 6] if expand_list is None else expand_list
-        fewer_norm_list = [False, False, False, True, True] if fewer_norm_list is None else fewer_norm_list
+        block_list = block_list or ["res", "fmb", "fmb", "mb", "att"]
+        expand_list = expand_list or [1, 4, 4, 4, 6]
+        fewer_norm_list = fewer_norm_list or [False, False, False, True, True]
 
         self.width_list = []
         self.stages = []
         # stage 0
         stage0 = [
             ConvLayer(
-                in_channels=in_channels,
+                in_channels=3,
                 out_channels=width_list[0],
                 stride=2,
                 norm=norm,

@@ -1,8 +1,12 @@
-from typing import Optional
+# EfficientViT: Multi-Scale Linear Attention for High-Resolution Dense Prediction
+# Han Cai, Junyan Li, Muyan Hu, Chuang Gan, Song Han
+# International Conference on Computer Vision (ICCV), 2023
 
 import torch
 import torch.nn as nn
-
+from typing import Dict as dict
+from typing import Tuple as tuple
+from typing import List as list
 from efficientvit.models.efficientvit.backbone import EfficientViTBackbone, EfficientViTLargeBackbone
 from efficientvit.models.nn import (
     ConvLayer,
@@ -38,7 +42,7 @@ class SegHead(DAGBlock):
         head_depth: int,
         expand_ratio: float,
         middle_op: str,
-        final_expand: Optional[float],
+        final_expand: float or None,
         n_classes: int,
         dropout=0,
         norm="bn2d",
@@ -83,13 +87,11 @@ class SegHead(DAGBlock):
         outputs = {
             "segout": OpSequential(
                 [
-                    (
-                        None
-                        if final_expand is None
-                        else ConvLayer(head_width, head_width * final_expand, 1, norm=norm, act_func=act_func)
-                    ),
+                    None
+                    if final_expand is None
+                    else ConvLayer(head_width, head_width * final_expand, 1, norm=norm, act_func=act_func),
                     ConvLayer(
-                        head_width * (1 if final_expand is None else final_expand),
+                        head_width * (final_expand or 1),
                         n_classes,
                         1,
                         use_bias=True,
@@ -105,7 +107,7 @@ class SegHead(DAGBlock):
 
 
 class EfficientViTSeg(nn.Module):
-    def __init__(self, backbone: EfficientViTBackbone | EfficientViTLargeBackbone, head: SegHead) -> None:
+    def __init__(self, backbone: EfficientViTBackbone or EfficientViTLargeBackbone, head: SegHead) -> None:
         super().__init__()
         self.backbone = backbone
         self.head = head

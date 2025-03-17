@@ -1,7 +1,9 @@
-import collections
+# EfficientViT: Multi-Scale Linear Attention for High-Resolution Dense Prediction
+# Han Cai, Junyan Li, Muyan Hu, Chuang Gan, Song Han
+# International Conference on Computer Vision (ICCV), 2023
+
 import os
 from inspect import signature
-from typing import Any, Callable, Optional
 
 import torch
 import torch.nn as nn
@@ -14,7 +16,6 @@ __all__ = [
     "resize",
     "build_kwargs_from_config",
     "load_state_dict_from_file",
-    "get_submodule_weights",
 ]
 
 
@@ -26,11 +27,7 @@ def get_device(model: nn.Module) -> torch.device:
     return model.parameters().__next__().device
 
 
-def get_dtype(model: nn.Module) -> torch.dtype:
-    return model.parameters().__next__().dtype
-
-
-def get_same_padding(kernel_size: int | tuple[int, ...]) -> int | tuple[int, ...]:
+def get_same_padding(kernel_size):
     if isinstance(kernel_size, tuple):
         return tuple([get_same_padding(ks) for ks in kernel_size])
     else:
@@ -40,10 +37,10 @@ def get_same_padding(kernel_size: int | tuple[int, ...]) -> int | tuple[int, ...
 
 def resize(
     x: torch.Tensor,
-    size: Optional[Any] = None,
-    scale_factor: Optional[list[float]] = None,
+    size = None,
+    scale_factor = None,
     mode: str = "bicubic",
-    align_corners: Optional[bool] = False,
+    align_corners = False,
 ) -> torch.Tensor:
     if mode in {"bilinear", "bicubic"}:
         return F.interpolate(
@@ -59,7 +56,7 @@ def resize(
         raise NotImplementedError(f"resize(mode={mode}) not implemented.")
 
 
-def build_kwargs_from_config(config: dict, target_func: Callable) -> dict[str, Any]:
+def build_kwargs_from_config(config: dict, target_func: callable):
     valid_keys = list(signature(target_func).parameters)
     kwargs = {}
     for key in config:
@@ -68,28 +65,9 @@ def build_kwargs_from_config(config: dict, target_func: Callable) -> dict[str, A
     return kwargs
 
 
-def load_state_dict_from_file(file: str, only_state_dict=True) -> dict[str, torch.Tensor]:
+def load_state_dict_from_file(file: str, only_state_dict=True):
     file = os.path.realpath(os.path.expanduser(file))
-    checkpoint = torch.load(file, map_location="cpu", weights_only=True)
+    checkpoint = torch.load(file, map_location="cpu")
     if only_state_dict and "state_dict" in checkpoint:
         checkpoint = checkpoint["state_dict"]
     return checkpoint
-
-
-def get_submodule_weights(weights: collections.OrderedDict, prefix: str):
-    submodule_weights = collections.OrderedDict()
-    len_prefix = len(prefix)
-    for key, weight in weights.items():
-        if key.startswith(prefix):
-            submodule_weights[key[len_prefix:]] = weight
-    return submodule_weights
-
-
-def get_dtype_from_str(dtype: str) -> torch.dtype:
-    if dtype == "fp32":
-        return torch.float32
-    if dtype == "fp16":
-        return torch.float16
-    if dtype == "bf16":
-        return torch.bfloat16
-    raise NotImplementedError(f"dtype {dtype} is not supported")

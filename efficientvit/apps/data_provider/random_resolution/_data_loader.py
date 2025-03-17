@@ -205,7 +205,6 @@ class RRSDataLoader(Generic[T_co]):
     .. warning:: See :ref:`reproducibility`, and :ref:`dataloader-workers-random-seed`, and
                  :ref:`data-loading-randomness` notes for random seed related questions.
     """
-
     dataset: Dataset[T_co]
     batch_size: Optional[int]
     num_workers: int
@@ -455,7 +454,7 @@ class RRSDataLoader(Generic[T_co]):
     # since '_BaseDataLoaderIter' references 'DataLoader'.
     def __iter__(self) -> "_BaseDataLoaderIter":
         # When using a single worker the returned iterator should be
-        # created everytime to avoid resetting its state
+        # created everytime to avoid reseting its state
         # However, in the case of a multiple workers iterator
         # the iterator is only created once in the lifetime of the
         # DataLoader object so that workers can be reused
@@ -542,6 +541,7 @@ class RRSDataLoader(Generic[T_co]):
         #        how many thread to create (eg. numpy, etc), then it is caller's responsibility to
         #        set those flags correctly.
         def _create_warning_msg(num_worker_suggest, num_worker_created, cpuset_checked):
+
             suggested_max_worker_msg = (
                 (
                     (

@@ -1,3 +1,7 @@
+# EfficientViT: Multi-Scale Linear Attention for High-Resolution Dense Prediction
+# Han Cai, Junyan Li, Muyan Hu, Chuang Gan, Song Han
+# International Conference on Computer Vision (ICCV), 2023
+
 import copy
 
 import torch
@@ -20,7 +24,7 @@ class RRSController:
     CHOICE_LIST = None
 
     @staticmethod
-    def get_candidates() -> list[tuple[int, int]]:
+    def get_candidates():
         return copy.deepcopy(RRSController.IMAGE_SIZE_LIST)
 
     @staticmethod

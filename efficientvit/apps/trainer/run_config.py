@@ -1,6 +1,9 @@
-import json
-from typing import Any
+# EfficientViT: Multi-Scale Linear Attention for High-Resolution Dense Prediction
+# Han Cai, Junyan Li, Muyan Hu, Chuang Gan, Song Han
+# International Conference on Computer Vision (ICCV), 2023
 
+import json
+from typing import Tuple as tuple
 import numpy as np
 import torch.nn as nn
 
@@ -53,7 +56,7 @@ class RunConfig:
         self.global_step = 0
         self.batch_per_epoch = 1
 
-    def build_optimizer(self, network: nn.Module) -> tuple[Any, Any]:
+    def build_optimizer(self, network: nn.Module) -> tuple[any, any]:
         r"""require setting 'batch_per_epoch' before building optimizer & lr_scheduler"""
         param_dict = {}
         for name, param in network.named_parameters():

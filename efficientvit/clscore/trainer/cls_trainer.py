@@ -1,6 +1,9 @@
+# EfficientViT: Multi-Scale Linear Attention for High-Resolution Dense Prediction
+# Han Cai, Junyan Li, Muyan Hu, Chuang Gan, Song Han
+# International Conference on Computer Vision (ICCV), 2023
+
 import os
 import sys
-from typing import Any, Optional
 
 import numpy as np
 import torch
@@ -22,7 +25,7 @@ class ClsTrainer(Trainer):
         path: str,
         model: nn.Module,
         data_provider,
-        auto_restart_thresh: Optional[float] = None,
+        auto_restart_thresh: float or None = None,
     ) -> None:
         super().__init__(
             path=path,
@@ -32,7 +35,7 @@ class ClsTrainer(Trainer):
         self.auto_restart_thresh = auto_restart_thresh
         self.test_criterion = nn.CrossEntropyLoss()
 
-    def _validate(self, model, data_loader, epoch) -> dict[str, Any]:
+    def _validate(self, model, data_loader, epoch) -> dict[str, any]:
         val_loss = AverageMeter()
         val_top1 = AverageMeter()
         val_top5 = AverageMeter()
@@ -74,7 +77,7 @@ class ClsTrainer(Trainer):
             **({"val_top5": val_top5.avg} if val_top5.count > 0 else {}),
         }
 
-    def before_step(self, feed_dict: dict[str, Any]) -> dict[str, Any]:
+    def before_step(self, feed_dict: dict[str, any]) -> dict[str, any]:
         images = feed_dict["data"].cuda()
         labels = feed_dict["label"].cuda()
 
@@ -104,7 +107,7 @@ class ClsTrainer(Trainer):
             "label": labels,
         }
 
-    def run_step(self, feed_dict: dict[str, Any]) -> dict[str, Any]:
+    def run_step(self, feed_dict: dict[str, any]) -> dict[str, any]:
         images = feed_dict["data"]
         labels = feed_dict["label"]
 
@@ -118,7 +121,7 @@ class ClsTrainer(Trainer):
         else:
             ema_output = None
 
-        with torch.autocast(device_type="cuda", dtype=self.amp_dtype, enabled=self.enable_amp):
+        with torch.autocast(device_type="cuda", dtype=torch.float16, enabled=self.fp16):
             output = self.model(images)
             loss = self.train_criterion(output, labels)
             # mesa loss
@@ -138,7 +141,7 @@ class ClsTrainer(Trainer):
             "top1": top1,
         }
 
-    def _train_one_epoch(self, epoch: int) -> dict[str, Any]:
+    def _train_one_epoch(self, epoch: int) -> dict[str, any]:
         train_loss = AverageMeter()
         train_top1 = AverageMeter()
 

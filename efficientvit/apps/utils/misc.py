@@ -1,3 +1,7 @@
+# EfficientViT: Multi-Scale Linear Attention for High-Resolution Dense Prediction
+# Han Cai, Junyan Li, Muyan Hu, Chuang Gan, Song Han
+# International Conference on Computer Vision (ICCV), 2023
+
 import os
 
 import yaml
@@ -12,7 +16,7 @@ __all__ = [
 ]
 
 
-def parse_with_yaml(config_str: str) -> str | dict:
+def parse_with_yaml(config_str: str) -> str or dict:
     try:
         # add space manually for dict
         if "{" in config_str and "}" in config_str and ":" in config_str:

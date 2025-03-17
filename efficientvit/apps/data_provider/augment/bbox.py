@@ -1,6 +1,8 @@
-from typing import Callable
-
+# EfficientViT: Multi-Scale Linear Attention for High-Resolution Dense Prediction
+# Han Cai, Junyan Li, Muyan Hu, Chuang Gan, Song Han
+# International Conference on Computer Vision (ICCV), 2023
 import numpy as np
+
 
 __all__ = ["rand_bbox"]
 
@@ -9,8 +11,7 @@ def rand_bbox(
     h: int,
     w: int,
     lam: float,
-    rand_func: Callable = np.random.uniform,
-) -> tuple[int, int, int, int]:
+    rand_func: callable = np.random.uniform):
     """randomly sample bbox, used in cutmix"""
     cut_rat = np.sqrt(1.0 - lam)
     cut_w = w * cut_rat

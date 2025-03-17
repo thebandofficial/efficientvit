@@ -1,6 +1,11 @@
-import copy
-from typing import Any, Optional
+# EfficientViT: Multi-Scale Linear Attention for High-Resolution Dense Prediction
+# Han Cai, Junyan Li, Muyan Hu, Chuang Gan, Song Han
+# International Conference on Computer Vision (ICCV), 2023
 
+import copy
+from typing import Dict as dict
+from typing import Tuple as tuple
+from typing import List as list
 import numpy as np
 import torch
 import torch.nn as nn
@@ -171,7 +176,7 @@ class SamNeck(DAGBlock):
 
 
 class EfficientViTSamImageEncoder(nn.Module):
-    def __init__(self, backbone: EfficientViTBackbone | EfficientViTLargeBackbone, neck: SamNeck):
+    def __init__(self, backbone: EfficientViTBackbone or EfficientViTLargeBackbone, neck: SamNeck):
         super().__init__()
         self.backbone = backbone
         self.neck = neck
@@ -196,7 +201,7 @@ class EfficientViTSam(nn.Module):
         image_encoder: EfficientViTSamImageEncoder,
         prompt_encoder: PromptEncoder,
         mask_decoder: MaskDecoder,
-        image_size: tuple[int, int] = (1024, 512),
+        image_size: tuple[int, int] = (512, 512),
     ) -> None:
         super().__init__()
         self.image_encoder = image_encoder
@@ -233,42 +238,6 @@ class EfficientViTSam(nn.Module):
         masks = F.interpolate(masks, original_size, mode="bilinear", align_corners=False)
         return masks
 
-    def forward(
-        self,
-        batched_input: list[dict[str, Any]],
-        multimask_output: bool,
-    ):
-        input_images = torch.stack([x["image"] for x in batched_input], dim=0)
-
-        image_embeddings = self.image_encoder(input_images)
-
-        outputs = []
-        iou_outputs = []
-        for image_record, curr_embedding in zip(batched_input, image_embeddings):
-            if "point_coords" in image_record:
-                points = (image_record["point_coords"], image_record["point_labels"])
-            else:
-                points = None
-            sparse_embeddings, dense_embeddings = self.prompt_encoder(
-                points=points,
-                boxes=image_record.get("boxes", None),
-                masks=image_record.get("mask_inputs", None),
-            )
-            low_res_masks, iou_predictions = self.mask_decoder(
-                image_embeddings=curr_embedding.unsqueeze(0),
-                image_pe=self.prompt_encoder.get_dense_pe(),
-                sparse_prompt_embeddings=sparse_embeddings,
-                dense_prompt_embeddings=dense_embeddings,
-                multimask_output=multimask_output,
-            )
-            outputs.append(low_res_masks)
-            iou_outputs.append(iou_predictions)
-
-        outputs = torch.stack([out for out in outputs], dim=0)
-        iou_outputs = torch.stack(iou_outputs, dim=0)
-
-        return outputs, iou_outputs
-
 
 class EfficientViTSamPredictor:
     def __init__(self, sam_model: EfficientViTSam) -> None:
@@ -301,18 +270,6 @@ class EfficientViTSamPredictor:
         boxes = self.apply_coords(boxes.reshape(-1, 2, 2))
         return boxes.reshape(-1, 4)
 
-    def apply_boxes_torch(self, boxes: torch.Tensor) -> torch.Tensor:
-        boxes = self.apply_coords_torch(boxes.reshape(-1, 2, 2))
-        return boxes.reshape(-1, 4)
-
-    def apply_coords_torch(self, coords: torch.Tensor, im_size=None) -> np.ndarray:
-        old_h, old_w = self.original_size
-        new_h, new_w = self.input_size
-        coords_copy = coords.detach().clone().to(torch.float)
-        coords_copy[..., 0] = coords_copy[..., 0] * (new_w / old_w)
-        coords_copy[..., 1] = coords_copy[..., 1] * (new_h / old_h)
-        return coords_copy
-
     @torch.inference_mode()
     def set_image(self, image: np.ndarray, image_format: str = "RGB") -> None:
         assert image_format in [
@@ -333,28 +290,12 @@ class EfficientViTSamPredictor:
         self.features = self.model.image_encoder(torch_data)
         self.is_image_set = True
 
-    @torch.inference_mode()
-    def set_image_batch(self, image: torch.Tensor) -> None:
-        """
-        image torch.Tensor : Shape (B,C,H,W) with data expected to be preprocessed already, see EfficientViTSam.transform for the expected transforms.
-        """
-        self.reset_image()
-
-        original_height, original_width = image.shape[-2], image.shape[-1]
-        self.original_size = (original_height, original_width)
-        self.input_size = ResizeLongestSide.get_preprocess_shape(
-            *self.original_size, long_side_length=self.model.image_size[0]
-        )
-
-        self.features = self.model.image_encoder(image)
-        self.is_image_set = True
-
     def predict(
         self,
-        point_coords: Optional[np.ndarray] = None,
-        point_labels: Optional[np.ndarray] = None,
-        box: Optional[np.ndarray] = None,
-        mask_input: Optional[np.ndarray] = None,
+        point_coords: np.ndarray or None = None,
+        point_labels: np.ndarray or None = None,
+        box: np.ndarray or None = None,
+        mask_input: np.ndarray or None = None,
         multimask_output: bool = True,
         return_logits: bool = False,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
@@ -427,18 +368,18 @@ class EfficientViTSamPredictor:
     @torch.inference_mode()
     def predict_torch(
         self,
-        point_coords: Optional[torch.Tensor] = None,
-        point_labels: Optional[torch.Tensor] = None,
-        boxes: Optional[torch.Tensor] = None,
-        mask_input: Optional[torch.Tensor] = None,
+        point_coords: torch.Tensor or None = None,
+        point_labels: torch.Tensor or None = None,
+        boxes: torch.Tensor or None = None,
+        mask_input: torch.Tensor or None = None,
         multimask_output: bool = True,
         return_logits: bool = False,
-        image_index: Optional[int] = None,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Predict masks for the given input prompts, using the currently set image.
         Input prompts are batched torch tensors and are expected to already be
         transformed to the input frame using ResizeLongestSide.
+
         Arguments:
           point_coords (torch.Tensor or None): A BxNx2 array of point prompts to the
             model. Each point is in (X,Y) in pixels.
@@ -459,7 +400,7 @@ class EfficientViTSamPredictor:
             input prompts, multimask_output=False can give better results.
           return_logits (bool): If true, returns un-thresholded masks logits
             instead of a binary mask.
-          image_index (int): If provided will be used to index the image embeddings used by the decoder. This needs to be used if one uses set_image_batch.
+
         Returns:
           (torch.Tensor): The output masks in BxCxHxW format, where C is the
             number of masks, and (H, W) is the original image size.
@@ -471,10 +412,12 @@ class EfficientViTSamPredictor:
         """
         if not self.is_image_set:
             raise RuntimeError("An image must be set with .set_image(...) before mask prediction.")
+
         if point_coords is not None:
             points = (point_coords, point_labels)
         else:
             points = None
+
         # Embed prompts
         sparse_embeddings, dense_embeddings = self.model.prompt_encoder(
             points=points,
@@ -483,21 +426,20 @@ class EfficientViTSamPredictor:
         )
 
         # Predict masks
-        if image_index is not None:
-            image_embeddings = self.features[image_index].unsqueeze(0)
-        else:
-            image_embeddings = self.features
         low_res_masks, iou_predictions = self.model.mask_decoder(
-            image_embeddings=image_embeddings,
+            image_embeddings=self.features,
             image_pe=self.model.prompt_encoder.get_dense_pe(),
             sparse_prompt_embeddings=sparse_embeddings,
             dense_prompt_embeddings=dense_embeddings,
             multimask_output=multimask_output,
         )
+
         # Upscale the masks to the original image resolution
         masks = self.model.postprocess_masks(low_res_masks, self.input_size, self.original_size)
+
         if not return_logits:
             masks = masks > self.model.mask_threshold
+
         return masks, iou_predictions, low_res_masks
 
 
@@ -505,7 +447,7 @@ class EfficientViTSamAutomaticMaskGenerator(SamAutomaticMaskGenerator):
     def __init__(
         self,
         model: EfficientViTSam,
-        points_per_side: Optional[int] = 32,
+        points_per_side: int or None = 32,
         points_per_batch: int = 64,
         pred_iou_thresh: float = 0.88,
         stability_score_thresh: float = 0.95,
@@ -515,7 +457,7 @@ class EfficientViTSamAutomaticMaskGenerator(SamAutomaticMaskGenerator):
         crop_nms_thresh: float = 0.7,
         crop_overlap_ratio: float = 512 / 1500,
         crop_n_points_downscale_factor: int = 1,
-        point_grids: Optional[list[np.ndarray]] = None,
+        point_grids: list[np.ndarray] or None = None,
         min_mask_region_area: int = 0,
         output_mode: str = "binary_mask",
     ) -> None:
@@ -538,6 +480,11 @@ class EfficientViTSamAutomaticMaskGenerator(SamAutomaticMaskGenerator):
             "uncompressed_rle",
             "coco_rle",
         ], f"Unknown output_mode {output_mode}."
+        if output_mode == "coco_rle":
+            from pycocotools import mask as mask_utils  # type: ignore # noqa: F401
+
+        if min_mask_region_area > 0:
+            import cv2  # type: ignore # noqa: F401
 
         self.predictor = EfficientViTSamPredictor(model)
         self.points_per_batch = points_per_batch
