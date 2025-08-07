@@ -8,7 +8,7 @@ import os
 import onnx
 import torch
 import torch.nn as nn
-from onnxsim import simplify as simplify_func
+# from onnxsim import simplify as simplify_func
 
 __all__ = ["export_onnx"]
 
